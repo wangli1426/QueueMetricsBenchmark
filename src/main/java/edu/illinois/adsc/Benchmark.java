@@ -9,6 +9,8 @@ import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
+import java.io.Serializable;
+import java.util.Random;
 import java.util.Vector;
 
 /**
@@ -26,7 +28,10 @@ public class Benchmark {
     private boolean _help;
 
     @Option(name = "--num-producer", aliases = {"-p"}, usage = "set producer number ")
-    private int _producer_num = 3;
+    private int _producerNum = 3;
+
+    @Option(name = "--tuple-size", aliases = {"-s"}, usage = "set tuple size ")
+    private static int _tupleSize = 64;
 
     public void testMain(String[] args) {
         CmdLineParser parser = new CmdLineParser(this);
@@ -71,6 +76,31 @@ public class Benchmark {
         new Benchmark().testMain(args);
     }
 
+    private static class Tuple implements Serializable {
+
+        private Long [] values;
+
+        private Long key;
+
+        public Tuple(int length){
+            values = new Long[length / Long.SIZE -1];
+        }
+        public void randomGen() {
+            Random random = new Random();
+            for(int i = 1 ; i< values.length; i++) {
+                values[i] = random.nextLong();
+            }
+        }
+
+        public void setKey(Long k) {
+            key = k;
+        }
+
+        public Long getKey() {
+            return key;
+        }
+    }
+
     private static class Consumer implements Runnable {
         public EventHandler handler;
         private DisruptorQueue queue;
@@ -84,8 +114,8 @@ public class Benchmark {
             queue.consumerStarted();
             while (true) {
                 try {
-//                    queue.consumeBatchWhenAvailable(handler);
-                    queue.consumeBatch(handler);
+                    queue.consumeBatchWhenAvailable(handler);
+//                    queue.consumeBatch(handler);
                 } catch (RuntimeException e) {
                     //break
                 }
@@ -106,7 +136,11 @@ public class Benchmark {
             while (true) {
                 try {
                     //queue.publish(0,false);
-//                    System.out.println("Before publish!");
+                    System.out.println("Before publish!");
+                    Tuple tuple = new Tuple(_tupleSize);
+                    System.out.println("published!" + count++);
+                    tuple.randomGen();
+                    tuple.setKey(System.currentTimeMillis());
                     queue.publish(System.currentTimeMillis(), true);
 //                    System.out.println("Publish " + count++);
                 } catch (InsufficientCapacityException e) {
@@ -142,9 +176,19 @@ public class Benchmark {
                 count = 0;
                 totalTicks = 0;
             }
+            System.out.println("Consumped! count:" + count);
+
 //            totalTicks += (Long)obj;
-            totalTicks += System.currentTimeMillis() - (Long) obj;
+            Tuple tuple = (Tuple)obj;
+            System.out.println("--->");
+            try {
+            totalTicks += System.currentTimeMillis() - tuple.getKey();
+            System.out.println("Key:" + tuple.getKey());
             count++;
+            }
+            catch (Exception e) {
+                System.err.println("Something happend!"+e.getCause());
+            }
         }
 
         public Double processLatency() {
@@ -164,8 +208,8 @@ public class Benchmark {
     private void execute(Runnable producer, Runnable consumer, Runnable reporter, int executeSeconds)
             throws InterruptedException {
 
-        Thread[] producerThreads = new Thread[_producer_num];
-        for (int i = 0; i < _producer_num; i++) {
+        Thread[] producerThreads = new Thread[_producerNum];
+        for (int i = 0; i < _producerNum; i++) {
             producerThreads[i] = new Thread(producer);
             producerThreads[i].start();
         }
