@@ -78,12 +78,12 @@ public class Benchmark {
 
     private static class Tuple implements Serializable {
 
-        private Long [] values;
+        private long [] values;
 
-        private Long key;
+        private long key;
 
         public Tuple(int length){
-            values = new Long[length / Long.SIZE -1];
+            values = new long[length / Long.SIZE -1];
         }
         public void randomGen() {
             Random random = new Random();
@@ -92,11 +92,11 @@ public class Benchmark {
             }
         }
 
-        public void setKey(Long k) {
+        public void setKey(long k) {
             key = k;
         }
 
-        public Long getKey() {
+        public long getKey() {
             return key;
         }
     }
@@ -135,14 +135,10 @@ public class Benchmark {
         public void run() {
             while (true) {
                 try {
-                    //queue.publish(0,false);
-                    System.out.println("Before publish!");
                     Tuple tuple = new Tuple(_tupleSize);
-                    System.out.println("published!" + count++);
                     tuple.randomGen();
                     tuple.setKey(System.currentTimeMillis());
-                    queue.publish(System.currentTimeMillis(), true);
-//                    System.out.println("Publish " + count++);
+                    queue.publish(tuple, true);
                 } catch (InsufficientCapacityException e) {
                     System.err.println(e.getMessage());
                     return;
@@ -157,7 +153,7 @@ public class Benchmark {
         public void reset();
     }
 
-    private static class Handle implements EventHandler<Object>, Monitor {
+    private static class Handle implements EventHandler<Tuple>, Monitor {
         private long totalTicks;
         private long count;
         private boolean started;
@@ -169,25 +165,21 @@ public class Benchmark {
             started = false;
         }
 
-        public void onEvent(Object obj, long sequence, boolean endOfBatch) {
+        public void onEvent(Tuple obj, long sequence, boolean endOfBatch) {
             if (!started) {
                 started = true;
                 startTime = System.currentTimeMillis();
                 count = 0;
                 totalTicks = 0;
             }
-            System.out.println("Consumped! count:" + count);
 
-//            totalTicks += (Long)obj;
-            Tuple tuple = (Tuple)obj;
-            System.out.println("--->");
+            Tuple tuple = obj;
             try {
             totalTicks += System.currentTimeMillis() - tuple.getKey();
-            System.out.println("Key:" + tuple.getKey());
             count++;
             }
             catch (Exception e) {
-                System.err.println("Something happend!"+e.getCause());
+                System.err.println("Something happend!"+e.getCause() + e.toString() +e.getStackTrace());
             }
         }
 
