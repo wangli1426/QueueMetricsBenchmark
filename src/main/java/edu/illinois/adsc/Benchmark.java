@@ -56,7 +56,7 @@ public class Benchmark {
 
         Monitor monitor =  handle;
 
-        DisruptorQueue queue = createQueue("MyQueue", _queueSize);
+        DisruptorQueue queue = createQueue("MyQueue", (int)Math.pow(2, _queueSize));
 
         Consumer consumer = new Consumer(queue, handle);
 
