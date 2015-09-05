@@ -34,6 +34,9 @@ public class Benchmark {
     @Option(name = "--tuple-size", aliases = {"-s"}, usage = "set tuple size ")
     private static int _tupleSize = 64;
 
+    @Option(name = "--queue-size", aliases =  {"-q"}, usage = "set queue size")
+    private int _queueSize = 8;
+
     public void testMain(String[] args) {
         CmdLineParser parser = new CmdLineParser(this);
         parser.setUsageWidth(80);
@@ -53,7 +56,7 @@ public class Benchmark {
 
         Monitor monitor =  handle;
 
-        DisruptorQueue queue = createQueue("MyQueue", 1024);
+        DisruptorQueue queue = createQueue("MyQueue", _queueSize);
 
         Consumer consumer = new Consumer(queue, handle);
 
