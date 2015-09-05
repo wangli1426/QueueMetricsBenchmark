@@ -32,10 +32,13 @@ public class Benchmark {
     private int _producerNum = 3;
 
     @Option(name = "--tuple-size", aliases = {"-s"}, usage = "set tuple size ")
-    private static int _tupleSize = 64;
+    private static int _tupleSize = 14;
 
     @Option(name = "--queue-size", aliases =  {"-q"}, usage = "set queue size = 2^x")
     private int _queueSize = 8;
+
+    @Option(name = "--mode", aliases = {"-m"}, usage = "set mode 1 or 1")
+    public static int _mode = 0;
 
     public void testMain(String[] args) {
         CmdLineParser parser = new CmdLineParser(this);
@@ -123,8 +126,10 @@ public class Benchmark {
             queue.consumerStarted();
             while (true) {
                 try {
-                    queue.consumeBatchWhenAvailable(handler);
-//                    queue.consumeBatch(handler);
+                    if(_mode==0)
+                        queue.consumeBatchWhenAvailable(handler);
+                    else
+                        queue.consumeBatch(handler);
                 } catch (RuntimeException e) {
                     //break
                 }
