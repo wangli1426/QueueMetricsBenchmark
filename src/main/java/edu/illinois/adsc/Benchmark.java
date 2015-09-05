@@ -10,6 +10,7 @@ import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Random;
 import java.util.Vector;
 
@@ -52,13 +53,13 @@ public class Benchmark {
 
         Monitor monitor =  handle;
 
-        DisruptorQueue queue = createQueue("MyQueue", 16);
+        DisruptorQueue queue = createQueue("MyQueue", 1024);
 
         Consumer consumer = new Consumer(queue, handle);
 
         Producer producer = new Producer(queue);
 
-        Reporter reporter = new Reporter(monitor, _reportCycles);
+        Reporter reporter = new Reporter(monitor,queue, _reportCycles);
 
         try {
            execute(producer, consumer, reporter, _reportCycles);
@@ -83,10 +84,15 @@ public class Benchmark {
         private long key;
 
         public Tuple(int length){
-            values = new long[length / Long.SIZE -1];
+
+            if (length < 16){
+                throw new IllegalArgumentException("tuple size must be larger than 16.");
+            }
+
+            values = new long[length / (Long.SIZE / 8) -1];
         }
         public void randomGen() {
-            Random random = new Random();
+            Random random = new Random(System.currentTimeMillis());
             for(int i = 1 ; i< values.length; i++) {
                 values[i] = random.nextLong();
             }
@@ -132,14 +138,14 @@ public class Benchmark {
             count = 0;
         }
 
-        public void run() {
+        public void run(){
             while (true) {
                 try {
                     Tuple tuple = new Tuple(_tupleSize);
                     tuple.randomGen();
                     tuple.setKey(System.currentTimeMillis());
                     queue.publish(tuple, true);
-                } catch (InsufficientCapacityException e) {
+                } catch (Exception e) {
                     System.err.println(e.getMessage());
                     return;
                 }
@@ -174,13 +180,8 @@ public class Benchmark {
             }
 
             Tuple tuple = obj;
-            try {
             totalTicks += System.currentTimeMillis() - tuple.getKey();
             count++;
-            }
-            catch (Exception e) {
-                System.err.println("Something happend!"+e.getCause() + e.toString() +e.getStackTrace());
-            }
         }
 
         public Double processLatency() {
@@ -234,15 +235,19 @@ public class Benchmark {
 
         private int reportCycles;
         private Monitor monitor;
+        DisruptorQueue queue;
 
         private Vector<Double> latencies;
         private Vector<Double> throughputs;
 
-        public Reporter(Monitor monitor, int reportCycles) {
+
+        public Reporter(Monitor monitor, DisruptorQueue queue, int reportCycles) {
             this.reportCycles = reportCycles;
             this.monitor = monitor;
+            this.queue = queue;
             latencies = new Vector<Double>();
             throughputs = new Vector<Double>();
+
         }
 
         private void print() {
@@ -261,8 +266,8 @@ public class Benchmark {
         public void printSummary() {
             System.out.println("Summary:");
             System.out.println("\t\tMIN\t\tMAX\t\tAVG");
-            System.out.format("Latency   \t%f\t%f\t%f\n", getMin(latencies), getMin(latencies), getAvg(latencies) );
-            System.out.format("Throughput\t%6.2f\t%6.2f\t%6.2f\n", getMin(throughputs), getMin(throughputs), getAvg(throughputs) );
+            System.out.format("Latency   \t%f\t%f\t%f\n", getMin(latencies), getMax(latencies), getAvg(latencies) );
+            System.out.format("Throughput\t%6.2f\t%6.2f\t%6.2f\n", getMin(throughputs), getMax(throughputs), getAvg(throughputs) );
         }
 
         private double getMin(Vector<Double> inputs){
