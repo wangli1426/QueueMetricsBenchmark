@@ -34,7 +34,7 @@ public class Benchmark {
     @Option(name = "--tuple-size", aliases = {"-s"}, usage = "set tuple size ")
     private static int _tupleSize = 64;
 
-    @Option(name = "--queue-size", aliases =  {"-q"}, usage = "set queue size")
+    @Option(name = "--queue-size", aliases =  {"-q"}, usage = "set queue size = 2^x")
     private int _queueSize = 8;
 
     public void testMain(String[] args) {
